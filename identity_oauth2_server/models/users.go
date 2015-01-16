@@ -5,12 +5,11 @@ import (
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"identity_openid_server/models/base"
-	"log"
 	"time"
 )
 
 type User struct {
-	ID                  string    `bson:"_id"          				json:"_id"`
+	ID                  int64     `bson:"_id"          				json:"_id"`
 	Name                string    `bson:"name"        				json:"name"`
 	Email               string    `bson:"email"       				json:"email"`
 	Password            string    `bson:"password"     				json:"password"`
@@ -25,4 +24,54 @@ type User struct {
 	IdentityUrl         string    `bson:"identity_url"     			json:"identity_url"`
 	CreatedAt           time.Time `bson:"created_at"     			json:"created_at"`
 	UpdatedAt           time.Time `bson:"updated_at"     			json:"updated_at"`
+}
+
+func NewUser(name, email, password string) *User {
+	user := User{
+		Name:        name,
+		Email:       email,
+		Password:    password,
+		SignInCount: 1,
+		IdentityUrl: beego.AppConfig.String("rootPath") + name,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	return &user
+}
+
+func FindUserByName(username string) *User {
+	beego.Debug("用户名:" + username)
+	user := User{}
+
+	mConn := base.Conn()
+	defer mConn.Close()
+
+	tb := mConn.DB("").C("users")
+	err := tb.Find(bson.M{"name": username}).One(user)
+
+	if err != nil {
+		return nil
+	}
+
+	return &user
+}
+
+func (u *User) InsertUser() (code int, err error) {
+	mConn := base.Conn()
+	defer mConn.Close()
+
+	tb := mConn.DB("").C("users")
+
+	err = tb.Insert(u)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			code = 100
+		} else {
+			code = -1
+		}
+	} else {
+		code = 0
+	}
+	return
 }
